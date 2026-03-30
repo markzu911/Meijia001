@@ -6,6 +6,8 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const STYLES = [
+  { id: 'red', name: '经典正红 (Classic Red)', prompt: 'Classic, vibrant red nail polish with a high-gloss finish, looking elegant and bold.' },
+  { id: 'wine', name: '酒红魅影 (Wine Red)', prompt: 'Deep, sophisticated wine red or burgundy nail art with a luxurious velvet finish.' },
   { id: 'purple', name: '淡雅紫色 (Soft Purple)', prompt: 'Soft lavender purple nail art with a delicate, translucent finish and tiny silver sparkles.' },
   { id: 'pale', name: '淡雅裸色 (Pale Nude)', prompt: 'Very pale, sophisticated nude nail polish with a clean, minimalist look.' },
   { id: 'french', name: '法式美甲 (French)', prompt: 'Elegant French manicure with white tips and a natural pink base.' },
@@ -115,11 +117,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-purple-100">
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-red-100">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-400 rounded-lg flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white">
               <Sparkles size={18} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">自动美甲生成器</h1>
@@ -140,7 +142,7 @@ export default function App() {
               
               <div 
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
-                  ${selectedImage ? 'border-purple-200 bg-purple-50/50' : 'border-stone-300 hover:border-purple-300 hover:bg-stone-50'}`}
+                  ${selectedImage ? 'border-red-200 bg-red-50/50' : 'border-stone-300 hover:border-red-300 hover:bg-stone-50'}`}
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
@@ -155,10 +157,10 @@ export default function App() {
                 
                 {selectedImage ? (
                   <div className="space-y-3">
-                    <div className="w-16 h-16 mx-auto bg-purple-50 text-purple-400 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 mx-auto bg-red-50 text-red-500 rounded-full flex items-center justify-center">
                       <ImageIcon size={24} />
                     </div>
-                    <p className="text-sm font-medium text-purple-600">已选择图片</p>
+                    <p className="text-sm font-medium text-red-600">已选择图片</p>
                     <p className="text-xs text-stone-500">点击或拖拽重新上传</p>
                   </div>
                 ) : (
@@ -186,7 +188,7 @@ export default function App() {
                     onClick={() => setSelectedStyle(style)}
                     className={`px-3 py-3 rounded-xl text-sm font-medium transition-all text-left
                       ${selectedStyle.id === style.id 
-                        ? 'bg-purple-400 text-white shadow-md shadow-purple-400/20 ring-2 ring-purple-300 ring-offset-2' 
+                        ? 'bg-red-500 text-white shadow-md shadow-red-500/20 ring-2 ring-red-300 ring-offset-2' 
                         : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'}`}
                   >
                     {style.name}
@@ -202,8 +204,8 @@ export default function App() {
                 ${!selectedImage 
                   ? 'bg-stone-300 cursor-not-allowed' 
                   : isGenerating 
-                    ? 'bg-purple-300 cursor-wait' 
-                    : 'bg-purple-500 hover:bg-purple-600 shadow-lg shadow-purple-500/20 active:scale-[0.98]'}`}
+                    ? 'bg-red-300 cursor-wait' 
+                    : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 active:scale-[0.98]'}`}
             >
               {isGenerating ? (
                 <>
@@ -303,7 +305,7 @@ export default function App() {
                           {isGenerating && (
                             <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center">
                               <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4">
-                                <Loader2 size={32} className="animate-spin text-purple-500" />
+                                <Loader2 size={32} className="animate-spin text-red-500" />
                                 <p className="text-sm font-medium text-stone-700">AI 正在为您绘制美甲...</p>
                               </div>
                             </div>
