@@ -6,6 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const STYLES = [
+  { id: 'purple', name: '紫色梦幻 (Purple)', prompt: 'Dreamy purple nail art with soft lavender tones and subtle silver accents.' },
   { id: 'french', name: '法式美甲 (French)', prompt: 'Elegant French manicure with white tips and a natural pink base.' },
   { id: 'glitter', name: '闪片美甲 (Glitter)', prompt: 'Glamorous nail art with holographic glitter and rhinestones.' },
   { id: 'matte', name: '哑光美甲 (Matte)', prompt: 'Chic matte finish nail polish in a deep burgundy or plum color.' },
@@ -113,11 +114,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-pink-200">
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-purple-200">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-pink-500 rounded-lg flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white">
               <Sparkles size={18} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">自动美甲生成器</h1>
@@ -138,7 +139,7 @@ export default function App() {
               
               <div 
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
-                  ${selectedImage ? 'border-pink-300 bg-pink-50' : 'border-stone-300 hover:border-pink-400 hover:bg-stone-50'}`}
+                  ${selectedImage ? 'border-purple-300 bg-purple-50' : 'border-stone-300 hover:border-purple-400 hover:bg-stone-50'}`}
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
@@ -153,10 +154,10 @@ export default function App() {
                 
                 {selectedImage ? (
                   <div className="space-y-3">
-                    <div className="w-16 h-16 mx-auto bg-pink-100 text-pink-600 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 mx-auto bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
                       <ImageIcon size={24} />
                     </div>
-                    <p className="text-sm font-medium text-pink-700">已选择图片</p>
+                    <p className="text-sm font-medium text-purple-700">已选择图片</p>
                     <p className="text-xs text-stone-500">点击或拖拽重新上传</p>
                   </div>
                 ) : (
@@ -184,7 +185,7 @@ export default function App() {
                     onClick={() => setSelectedStyle(style)}
                     className={`px-3 py-3 rounded-xl text-sm font-medium transition-all text-left
                       ${selectedStyle.id === style.id 
-                        ? 'bg-pink-500 text-white shadow-md shadow-pink-500/20 ring-2 ring-pink-500 ring-offset-2' 
+                        ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20 ring-2 ring-purple-500 ring-offset-2' 
                         : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'}`}
                   >
                     {style.name}
@@ -200,8 +201,8 @@ export default function App() {
                 ${!selectedImage 
                   ? 'bg-stone-300 cursor-not-allowed' 
                   : isGenerating 
-                    ? 'bg-pink-400 cursor-wait' 
-                    : 'bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-600/20 active:scale-[0.98]'}`}
+                    ? 'bg-purple-400 cursor-wait' 
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/20 active:scale-[0.98]'}`}
             >
               {isGenerating ? (
                 <>
@@ -301,7 +302,7 @@ export default function App() {
                           {isGenerating && (
                             <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center">
                               <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4">
-                                <Loader2 size={32} className="animate-spin text-pink-500" />
+                                <Loader2 size={32} className="animate-spin text-purple-500" />
                                 <p className="text-sm font-medium text-stone-700">AI 正在为您绘制美甲...</p>
                               </div>
                             </div>
