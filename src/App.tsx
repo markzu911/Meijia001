@@ -6,7 +6,8 @@ import { GoogleGenAI } from '@google/genai';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const STYLES = [
-  { id: 'purple', name: '紫色梦幻 (Purple)', prompt: 'Dreamy purple nail art with soft lavender tones and subtle silver accents.' },
+  { id: 'purple', name: '淡雅紫色 (Soft Purple)', prompt: 'Soft lavender purple nail art with a delicate, translucent finish and tiny silver sparkles.' },
+  { id: 'pale', name: '淡雅裸色 (Pale Nude)', prompt: 'Very pale, sophisticated nude nail polish with a clean, minimalist look.' },
   { id: 'french', name: '法式美甲 (French)', prompt: 'Elegant French manicure with white tips and a natural pink base.' },
   { id: 'glitter', name: '闪片美甲 (Glitter)', prompt: 'Glamorous nail art with holographic glitter and rhinestones.' },
   { id: 'matte', name: '哑光美甲 (Matte)', prompt: 'Chic matte finish nail polish in a deep burgundy or plum color.' },
@@ -114,11 +115,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-purple-200">
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-purple-100">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-purple-400 rounded-lg flex items-center justify-center text-white">
               <Sparkles size={18} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">自动美甲生成器</h1>
@@ -139,7 +140,7 @@ export default function App() {
               
               <div 
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
-                  ${selectedImage ? 'border-purple-300 bg-purple-50' : 'border-stone-300 hover:border-purple-400 hover:bg-stone-50'}`}
+                  ${selectedImage ? 'border-purple-200 bg-purple-50/50' : 'border-stone-300 hover:border-purple-300 hover:bg-stone-50'}`}
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
@@ -154,10 +155,10 @@ export default function App() {
                 
                 {selectedImage ? (
                   <div className="space-y-3">
-                    <div className="w-16 h-16 mx-auto bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 mx-auto bg-purple-50 text-purple-400 rounded-full flex items-center justify-center">
                       <ImageIcon size={24} />
                     </div>
-                    <p className="text-sm font-medium text-purple-700">已选择图片</p>
+                    <p className="text-sm font-medium text-purple-600">已选择图片</p>
                     <p className="text-xs text-stone-500">点击或拖拽重新上传</p>
                   </div>
                 ) : (
@@ -185,7 +186,7 @@ export default function App() {
                     onClick={() => setSelectedStyle(style)}
                     className={`px-3 py-3 rounded-xl text-sm font-medium transition-all text-left
                       ${selectedStyle.id === style.id 
-                        ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20 ring-2 ring-purple-500 ring-offset-2' 
+                        ? 'bg-purple-400 text-white shadow-md shadow-purple-400/20 ring-2 ring-purple-300 ring-offset-2' 
                         : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'}`}
                   >
                     {style.name}
@@ -201,8 +202,8 @@ export default function App() {
                 ${!selectedImage 
                   ? 'bg-stone-300 cursor-not-allowed' 
                   : isGenerating 
-                    ? 'bg-purple-400 cursor-wait' 
-                    : 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/20 active:scale-[0.98]'}`}
+                    ? 'bg-purple-300 cursor-wait' 
+                    : 'bg-purple-500 hover:bg-purple-600 shadow-lg shadow-purple-500/20 active:scale-[0.98]'}`}
             >
               {isGenerating ? (
                 <>
