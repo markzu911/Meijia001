@@ -1,21 +1,61 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Sparkles, Loader2, Download, RefreshCw, Wand2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Image as ImageIcon, Sparkles, Loader2, Download, RefreshCw, Wand2, User, Coins } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const STYLES = [
-  { id: 'red', name: '经典正红 (Classic Red)', prompt: 'Classic, vibrant red nail polish with a high-gloss finish, looking elegant and bold.' },
-  { id: 'wine', name: '酒红魅影 (Wine Red)', prompt: 'Deep, sophisticated wine red or burgundy nail art with a luxurious velvet finish.' },
-  { id: 'purple', name: '淡雅紫色 (Soft Purple)', prompt: 'Soft lavender purple nail art with a delicate, translucent finish and tiny silver sparkles.' },
-  { id: 'pale', name: '淡雅裸色 (Pale Nude)', prompt: 'Very pale, sophisticated nude nail polish with a clean, minimalist look.' },
-  { id: 'french', name: '法式美甲 (French)', prompt: 'Elegant French manicure with white tips and a natural pink base.' },
-  { id: 'glitter', name: '闪片美甲 (Glitter)', prompt: 'Glamorous nail art with holographic glitter and rhinestones.' },
-  { id: 'matte', name: '哑光美甲 (Matte)', prompt: 'Chic matte finish nail polish in a deep burgundy or plum color.' },
-  { id: 'floral', name: '碎花美甲 (Floral)', prompt: 'Delicate hand-painted floral patterns on a pastel background.' },
-  { id: 'minimalist', name: '极简线条 (Minimalist)', prompt: 'Modern minimalist nail art with thin geometric lines and dots on a nude base.' },
-  { id: 'ombre', name: '渐变美甲 (Ombre)', prompt: 'Smooth gradient ombre effect blending from peach to soft pink.' },
+  { 
+    id: 'red', 
+    name: '经典正红 (Classic Red)', 
+    prompt: 'Classic, vibrant, high-saturation pure red nail polish. High-end tone, not orange, not purple, not rose red. Mature, confident, elegant. Five nails uniformly coated with high-gloss top coat, smooth and flat, bright reflection, like a high-quality salon finish. No patterns, no rhinestones, no decorations.' 
+  },
+  { 
+    id: 'wine', 
+    name: '酒红魅影 (Wine Red)', 
+    prompt: 'Deep, rich wine red or burgundy with a slight brown tone and vintage feel. Calm, mysterious, mature. High-quality glossy gel effect, uniform and full color, slightly translucent in dark tones, not black or muddy. No complex patterns or decorations.' 
+  },
+  { 
+    id: 'purple', 
+    name: '淡雅紫色 (Soft Purple)', 
+    prompt: 'Soft, low-saturation light purple or lavender with a slight grey tone. Gentle, romantic, fresh. Fine glossy texture, uniform and soft color, light and translucent feel. No complex decorations, clean and soft pure color.' 
+  },
+  { 
+    id: 'pale', 
+    name: '淡雅裸色 (Pale Nude)', 
+    prompt: 'Natural, soft pale nude, milk coffee nude pink, or light warm beige. Low saturation, minimalist, gentle, professional. Natural glossy texture, clean and delicate. No heavy pink, no obvious pearl, no decorations.' 
+  },
+  { 
+    id: 'french', 
+    name: '法式美甲 (French)', 
+    prompt: 'Classic French manicure. Base is translucent natural nude pink or milky white. Tips have neat, exquisite white French arcs. Fine, smooth, clean white lines with elegant curvature and coordinated proportions. No complex patterns or decorations.' 
+  },
+  { 
+    id: 'glitter', 
+    name: '闪片美甲 (Glitter)', 
+    prompt: 'Exquisite fine glitter nail art. High-density fine glitter and tiny sequins uniformly overlaid on a clear base. High-end, delicate, layered glitter in silver, champagne, or pink gold. Shimmering, dreamy, eye-catching with realistic light reflection. No large rhinestones.' 
+  },
+  { 
+    id: 'matte', 
+    name: '哑光美甲 (Matte)', 
+    prompt: 'High-quality matte texture. Soft, delicate, non-reflective frosted effect, like velvet. Uniform color, low-key, modern, minimalist. No complex decorations, focusing on the matte texture.' 
+  },
+  { 
+    id: 'floral', 
+    name: '碎花美甲 (Floral)', 
+    prompt: 'Gentle, exquisite floral nail art. Base is soft nude pink, milky white, or translucent pink. Delicate small flower patterns on some nails in French small floral or Japanese gentle style. Fresh, light, with white space. Glossy texture, natural brushstrokes.' 
+  },
+  { 
+    id: 'minimalist', 
+    name: '极简线条 (Minimalist)', 
+    prompt: 'Minimalist line design. Low-saturation base (nude pink, milky white, grey beige). Simple, restrained black, white, or metallic lines or geometric elements on some nails. Precise, clean, modern, artistic. "Less is more" aesthetic.' 
+  },
+  { 
+    id: 'ombre', 
+    name: '渐变美甲 (Ombre)', 
+    prompt: 'High-quality ombre/gradient. Smooth color transition on each nail (nude pink to milky white, bean paste to transparent, etc.). Very fine and natural transition without obvious layers or harsh boundaries. Gentle, light, dreamy. Glossy texture.' 
+  },
 ];
 
 export default function App() {
@@ -26,6 +66,65 @@ export default function App() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // === SaaS API Integration States ===
+  const [saasUserId, setSaasUserId] = useState<string | null>(null);
+  const [saasToolId, setSaasToolId] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<{name: string, enterprise?: string, integral: number} | null>(null);
+  const [toolInfo, setToolInfo] = useState<{name: string, integral: number} | null>(null);
+
+  // --- SaaS 接口交互: 初始化 (Step 1 阶段) ---
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'SAAS_INIT') {
+        let uid = event.data.userId;
+        let tid = event.data.toolId;
+        
+        // 核心规范: 过滤无效的占位字符串 "null" 和 "undefined"
+        if (uid === 'null' || uid === 'undefined') uid = null;
+        if (tid === 'null' || tid === 'undefined') tid = null;
+        
+        if (uid && tid) {
+          setSaasUserId(uid);
+          setSaasToolId(tid);
+          
+          // 【Step 1】 启动阶段 (/api/tool/launch)
+          fetch('/api/tool/launch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: uid, toolId: tid })
+          })
+          .then(res => res.json())
+          .then(data => {
+            // 宽松校验: 后台返回 success 或 valid 即可
+            if (data.success || data.valid) {
+              if (data.data?.user) setUserInfo(data.data.user);
+              if (data.data?.tool) setToolInfo(data.data.tool);
+            }
+          })
+          .catch(err => console.error("SaaS Launch Error:", err));
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    // 开发预览 Mock: 确保在非 iframe 中独立访问时也能进行流程演示
+    const devTimer = setTimeout(() => {
+      if (!saasUserId) {
+        window.postMessage({
+          type: 'SAAS_INIT',
+          userId: 'dev_user_001',
+          toolId: 'tool_nailart_id'
+        }, '*');
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearTimeout(devTimer);
+    };
+  }, [saasUserId]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,6 +164,20 @@ export default function App() {
     setError(null);
 
     try {
+      // --- SaaS 接口交互: 校验 (Step 2 阶段) ---
+      if (saasUserId && saasToolId) {
+        const verifyRes = await fetch('/api/tool/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: saasUserId, toolId: saasToolId })
+        });
+        const verifyData = await verifyRes.json();
+        
+        if (!verifyData.success && !verifyData.valid) {
+          throw new Error(verifyData.message || "积分不足，无法生成。");
+        }
+      }
+
       const base64Data = selectedImage.split(',')[1];
       
       const response = await ai.models.generateContent({
@@ -97,6 +210,22 @@ export default function App() {
       if (!foundImage) {
         throw new Error("No image was generated. Please try again.");
       }
+
+      // --- SaaS 接口交互: 扣费 (Step 3 阶段) ---
+      if (saasUserId && saasToolId) {
+        const consumeRes = await fetch('/api/tool/consume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: saasUserId, toolId: saasToolId })
+        });
+        const consumeData = await consumeRes.json();
+        
+        if (consumeData.success || consumeData.valid) {
+          // 同步扣费后剩余的积分显示
+          setUserInfo(prev => prev ? { ...prev, integral: consumeData.data.currentIntegral } : prev);
+        }
+      }
+
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An error occurred while generating the image.");
@@ -126,6 +255,21 @@ export default function App() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight">自动美甲生成器</h1>
           </div>
+          
+          {userInfo && (
+            <div className="flex items-center gap-4 text-sm font-medium border border-stone-200 bg-stone-50 rounded-full px-4 py-1.5 shadow-sm">
+              <div className="flex items-center gap-1.5 text-stone-700">
+                <User size={16} className="text-stone-400" />
+                <span>{userInfo.name}</span>
+                {userInfo.enterprise && <span className="text-stone-400 text-xs hidden sm:inline-block font-normal">({userInfo.enterprise})</span>}
+              </div>
+              <div className="w-px h-4 bg-stone-300"></div>
+              <div className="flex items-center gap-1.5 text-red-600">
+                <Coins size={16} />
+                <span>积分: {userInfo.integral}</span>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
