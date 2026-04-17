@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Sparkles, Loader2, Download, RefreshCw, Wand2, User, Coins } from 'lucide-react';
+import { Upload, Image as ImageIcon, Sparkles, Loader2, Download, RefreshCw, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from '@google/genai';
 
@@ -66,65 +66,32 @@ export default function App() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [saasInfo, setSaasInfo] = useState<{userId: string, toolId: string} | null>(null);
 
-  // === SaaS API Integration States ===
-  const [saasUserId, setSaasUserId] = useState<string | null>(null);
-  const [saasToolId, setSaasToolId] = useState<string | null>(null);
-  const [userInfo, setUserInfo] = useState<{name: string, enterprise?: string, integral: number} | null>(null);
-  const [toolInfo, setToolInfo] = useState<{name: string, integral: number} | null>(null);
-
-  // --- SaaS 接口交互: 初始化 (Step 1 阶段) ---
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'SAAS_INIT') {
-        let uid = event.data.userId;
-        let tid = event.data.toolId;
+      if (event.data?.type === 'SAAS_INIT') {
+        let { userId, toolId } = event.data;
         
-        // 核心规范: 过滤无效的占位字符串 "null" 和 "undefined"
-        if (uid === 'null' || uid === 'undefined') uid = null;
-        if (tid === 'null' || tid === 'undefined') tid = null;
-        
-        if (uid && tid) {
-          setSaasUserId(uid);
-          setSaasToolId(tid);
-          
-          // 【Step 1】 启动阶段 (/api/tool/launch)
+        // Filter out invalid placeholder strings
+        if (userId === 'null' || userId === 'undefined') userId = null;
+        if (toolId === 'null' || toolId === 'undefined') toolId = null;
+
+        if (userId && toolId) {
+          setSaasInfo({ userId, toolId });
+          // 1. 启动阶段 (/api/tool/launch)
           fetch('/api/tool/launch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: uid, toolId: tid })
-          })
-          .then(res => res.json())
-          .then(data => {
-            // 宽松校验: 后台返回 success 或 valid 即可
-            if (data.success || data.valid) {
-              if (data.data?.user) setUserInfo(data.data.user);
-              if (data.data?.tool) setToolInfo(data.data.tool);
-            }
-          })
-          .catch(err => console.error("SaaS Launch Error:", err));
+            body: JSON.stringify({ userId, toolId })
+          }).catch(err => console.error("Launch API failed", err));
         }
       }
     };
-    
-    window.addEventListener('message', handleMessage);
-    
-    // 开发预览 Mock: 确保在非 iframe 中独立访问时也能进行流程演示
-    const devTimer = setTimeout(() => {
-      if (!saasUserId) {
-        window.postMessage({
-          type: 'SAAS_INIT',
-          userId: 'dev_user_001',
-          toolId: 'tool_nailart_id'
-        }, '*');
-      }
-    }, 1000);
 
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      clearTimeout(devTimer);
-    };
-  }, [saasUserId]);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -164,17 +131,21 @@ export default function App() {
     setError(null);
 
     try {
-      // --- SaaS 接口交互: 校验 (Step 2 阶段) ---
-      if (saasUserId && saasToolId) {
-        const verifyRes = await fetch('/api/tool/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: saasUserId, toolId: saasToolId })
-        });
-        const verifyData = await verifyRes.json();
-        
-        if (!verifyData.success && !verifyData.valid) {
-          throw new Error(verifyData.message || "积分不足，无法生成。");
+      // 2. 校验阶段 (/api/tool/verify)
+      if (saasInfo) {
+        try {
+          const verifyRes = await fetch('/api/tool/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(saasInfo)
+          });
+          const verifyData = await verifyRes.json();
+          // Relaxed validation
+          if (!verifyData.success && !verifyData.valid) {
+            throw new Error(verifyData.message || "积分不足");
+          }
+        } catch (verifyError: any) {
+          throw new Error(verifyError.message || "积分校验失败");
         }
       }
 
@@ -211,21 +182,14 @@ export default function App() {
         throw new Error("No image was generated. Please try again.");
       }
 
-      // --- SaaS 接口交互: 扣费 (Step 3 阶段) ---
-      if (saasUserId && saasToolId) {
-        const consumeRes = await fetch('/api/tool/consume', {
+      // 3. 扣费阶段 (/api/tool/consume)
+      if (saasInfo) {
+        fetch('/api/tool/consume', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: saasUserId, toolId: saasToolId })
-        });
-        const consumeData = await consumeRes.json();
-        
-        if (consumeData.success || consumeData.valid) {
-          // 同步扣费后剩余的积分显示
-          setUserInfo(prev => prev ? { ...prev, integral: consumeData.data.currentIntegral } : prev);
-        }
+          body: JSON.stringify(saasInfo)
+        }).catch(err => console.error("Consume API failed", err));
       }
-
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An error occurred while generating the image.");
@@ -255,21 +219,6 @@ export default function App() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight">自动美甲生成器</h1>
           </div>
-          
-          {userInfo && (
-            <div className="flex items-center gap-4 text-sm font-medium border border-stone-200 bg-stone-50 rounded-full px-4 py-1.5 shadow-sm">
-              <div className="flex items-center gap-1.5 text-stone-700">
-                <User size={16} className="text-stone-400" />
-                <span>{userInfo.name}</span>
-                {userInfo.enterprise && <span className="text-stone-400 text-xs hidden sm:inline-block font-normal">({userInfo.enterprise})</span>}
-              </div>
-              <div className="w-px h-4 bg-stone-300"></div>
-              <div className="flex items-center gap-1.5 text-red-600">
-                <Coins size={16} />
-                <span>积分: {userInfo.integral}</span>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
