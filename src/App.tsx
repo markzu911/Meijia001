@@ -67,20 +67,26 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saasInfo, setSaasInfo] = useState<{userId: string, toolId: string} | null>(null);
+  const [saasPrompt, setSaasPrompt] = useState<string[]>([]);
+  const [saasContext, setSaasContext] = useState<string | null>(null);
   const [userPoints, setUserPoints] = useState<{ current: number; required: number } | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SAAS_INIT') {
-        let { userId, toolId } = event.data;
+        let { userId, toolId, prompt, context } = event.data;
         
         // Filter out invalid placeholder strings
         if (userId === 'null' || userId === 'undefined') userId = null;
         if (toolId === 'null' || toolId === 'undefined') toolId = null;
 
         if (userId && toolId) {
+          console.log("SAAS_INIT received:", event.data);
           setSaasInfo({ userId, toolId });
+          setSaasPrompt(Array.isArray(prompt) ? prompt : []);
+          setSaasContext(context || null);
+
           // 1. 启动阶段 (/api/tool/launch)
           console.log("Step 1: Launching tool with SaaS info...");
           fetch('/api/tool/launch', {
@@ -174,6 +180,11 @@ export default function App() {
 
       // If we reach here, we are verified. Now start the actual generation.
       console.log("System verified. Proceeding to AI generation...");
+      
+      const promptText = `Add beautiful nail art to the hand in this image. Style: ${selectedStyle.prompt}. ${saasContext ? `Context: ${saasContext}. ` : ''}${saasPrompt.length > 0 ? `Additional keywords from user: ${saasPrompt.join(', ')}. ` : ''}Make it look highly realistic, perfectly fitting the natural shape of the nails. Do not change the background or the hand itself, only modify the nails.`;
+      
+      console.log("Final Generation Prompt:", promptText);
+
       setIsVerifying(false);
       setIsGenerating(true);
       setResultImage(null);
@@ -192,7 +203,7 @@ export default function App() {
               },
             },
             {
-              text: `Add beautiful nail art to the hand in this image. Style: ${selectedStyle.prompt}. Make it look highly realistic, perfectly fitting the natural shape of the nails. Do not change the background or the hand itself, only modify the nails.`,
+              text: promptText,
             },
           ],
         },
