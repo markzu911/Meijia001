@@ -67,6 +67,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saasInfo, setSaasInfo] = useState<{userId: string, toolId: string} | null>(null);
+  const [userPoints, setUserPoints] = useState<{ current: number; required: number } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -80,11 +82,23 @@ export default function App() {
         if (userId && toolId) {
           setSaasInfo({ userId, toolId });
           // 1. 启动阶段 (/api/tool/launch)
+          console.log("Step 1: Launching tool with SaaS info...");
           fetch('/api/tool/launch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, toolId })
-          }).catch(err => console.error("Launch API failed", err));
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.data) {
+              setUserPoints({ 
+                current: data.data.user.integral, 
+                required: data.data.tool.integral 
+              });
+              console.log("Launch successful, points received:", data.data);
+            }
+          })
+          .catch(err => console.error("Launch API failed", err));
         }
       }
     };
@@ -127,30 +141,46 @@ export default function App() {
   const generateNailArt = async () => {
     if (!selectedImage || !selectedMimeType) return;
 
-    setIsGenerating(true);
     setError(null);
+    setIsVerifying(true);
 
     try {
       // 2. 校验阶段 (/api/tool/verify)
       if (saasInfo) {
-        try {
-          const verifyRes = await fetch('/api/tool/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(saasInfo)
+        console.log("Step 2: Starting verification...");
+        const verifyRes = await fetch('/api/tool/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saasInfo)
+        });
+        const verifyData = await verifyRes.json();
+        
+        // Relaxed validation per SPEC
+        if (!verifyData.success && !verifyData.valid) {
+          setIsVerifying(false);
+          setError(verifyData.message || "积分不足，无法生成");
+          return;
+        }
+        
+        console.log("Step 2: Verification passed. Finalizing checks before generation.");
+        // Update local points if returned
+        if (verifyData.data) {
+          setUserPoints({
+            current: verifyData.data.currentIntegral,
+            required: verifyData.data.requiredIntegral
           });
-          const verifyData = await verifyRes.json();
-          // Relaxed validation
-          if (!verifyData.success && !verifyData.valid) {
-            throw new Error(verifyData.message || "积分不足");
-          }
-        } catch (verifyError: any) {
-          throw new Error(verifyError.message || "积分校验失败");
         }
       }
 
+      // If we reach here, we are verified. Now start the actual generation.
+      console.log("System verified. Proceeding to AI generation...");
+      setIsVerifying(false);
+      setIsGenerating(true);
+      setResultImage(null);
+
       const base64Data = selectedImage.split(',')[1];
       
+      console.log("Step 2b: Invoking AI model...");
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
@@ -179,21 +209,29 @@ export default function App() {
       }
 
       if (!foundImage) {
-        throw new Error("No image was generated. Please try again.");
+        throw new Error("AI未能生成图片，请重试。");
       }
 
       // 3. 扣费阶段 (/api/tool/consume)
       if (saasInfo) {
-        fetch('/api/tool/consume', {
+        console.log("Step 3: AI success, consuming points...");
+        const consumeRes = await fetch('/api/tool/consume', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(saasInfo)
-        }).catch(err => console.error("Consume API failed", err));
+        });
+        const consumeData = await consumeRes.json();
+        console.log("Consumption result:", consumeData);
+        // Refresh points after consumption
+        if (consumeData.success && consumeData.data) {
+          setUserPoints(prev => prev ? { ...prev, current: consumeData.data.currentIntegral } : null);
+        }
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An error occurred while generating the image.");
+      console.error("Task failed:", err);
+      setError(err.message || "生成美甲时发生错误。");
     } finally {
+      setIsVerifying(false);
       setIsGenerating(false);
     }
   };
@@ -292,15 +330,20 @@ export default function App() {
 
             <button
               onClick={generateNailArt}
-              disabled={!selectedImage || isGenerating}
+              disabled={!selectedImage || isGenerating || isVerifying}
               className={`w-full py-4 rounded-xl font-medium text-white flex items-center justify-center gap-2 transition-all
                 ${!selectedImage 
                   ? 'bg-stone-300 cursor-not-allowed' 
-                  : isGenerating 
+                  : (isGenerating || isVerifying) 
                     ? 'bg-red-300 cursor-wait' 
                     : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 active:scale-[0.98]'}`}
             >
-              {isGenerating ? (
+              {isVerifying ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  正在校验积分...
+                </>
+              ) : isGenerating ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
                   正在生成美甲...
@@ -312,6 +355,17 @@ export default function App() {
                 </>
               )}
             </button>
+
+            {userPoints && saasInfo && (
+              <div className="flex items-center justify-between px-2 pt-2 text-[10px] text-stone-500 font-medium">
+                <span className="flex items-center gap-1 opacity-70">
+                  所需积分: <span className="text-red-500/80">{userPoints.required}</span>
+                </span>
+                <span className="flex items-center gap-1 bg-stone-100 px-2 py-0.5 rounded-full">
+                  当前余额: <span className="text-stone-700">{userPoints.current}</span>
+                </span>
+              </div>
+            )}
 
             {error && (
               <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm border border-red-100">
